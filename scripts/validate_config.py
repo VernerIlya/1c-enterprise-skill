@@ -172,6 +172,8 @@ def validate_config(proj):
                         in_client = False
                     if 'ПоказатьОповещениеПользователю' in line:
                         errors.append(f"Typo in {rel} (line {idx+1}): use 'ПоказатьОповещениеПользователя' (with 'я')")
+                    if 'Информация32' in line:
+                        errors.append(f"Invalid picture in {rel} (line {idx+1}): 'Информация32' does not exist in standard БиблиотекаКартинок")
                     if in_client:
                         for forbidden in ['ТекущаяДатаСеанса', 'НачалоМесяца', 'КонецДня', 'НачалоДня', 'КонецМесяца']:
                             if forbidden in line:
