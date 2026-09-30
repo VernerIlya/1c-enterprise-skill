@@ -86,7 +86,7 @@ Activate this skill whenever:
 
 ---
 
-## 3. The 9 Critical XML Schema & BSL Rules
+## 3. The 12 Critical XML Schema & BSL Rules
 
 ### Rule 1: Form Properties by Object Type (`DefaultObjectForm` vs `DefaultForm`)
 - **Document (`<Document>`)**:
@@ -212,6 +212,38 @@ Properties allowed in `<Properties>` of an `<Attribute>` depend strictly on its 
   - ❌ `ПоказатьОповещениеПользователю(...)` fails at compilation: `Процедура или функция с указанным именем не определена`.
   - ✅ `ПоказатьОповещениеПользователя("Заголовок",, "Текст")` works correctly in Thin Client / Managed Application.
 - For dialog alerts, always use `ПоказатьПредупреждение(Неопределено, Текст)`.
+
+### Rule 10: Document Numbering Properties (No `<Numbered>`)
+- In 1C Document XML metadata, the `<Numbered>` property does **NOT** exist.
+- ❌ Using `<Numbered>true</Numbered>` causes Designer load error:
+  `Неверное свойство объекта метаданных. Свойство Numbered не входит в состав объекта метаданных Document. - Numbered`.
+- ✅ Canonical Document numbering configuration:
+  ```xml
+  <Numerator/>
+  <NumberType>String</NumberType>
+  <NumberLength>9</NumberLength>
+  <NumberAllowedLength>Variable</NumberAllowedLength>
+  <NumberPeriodicity>Nonperiodical</NumberPeriodicity>
+  <CheckUnique>true</CheckUnique>
+  <Autonumbering>true</Autonumbering>
+  ```
+
+### Rule 11: Register Dimension Properties (`<MainFilter>` in AccumulationRegisters is Forbidden)
+- `<MainFilter>` is a property of `InformationRegister.Dimension` ONLY (used to filter independent slice records).
+- ❌ Using `<MainFilter>true</MainFilter>` in `AccumulationRegister.Dimension` causes Designer load error:
+  `Неверное свойство объекта метаданных. Свойство MainFilter не входит в состав объекта метаданных Dimension. - MainFilter`.
+- ✅ Canonical `AccumulationRegister.Dimension` property tail:
+  ```xml
+  <DenyIncompleteValues>false</DenyIncompleteValues>
+  <Indexing>DontIndex</Indexing>
+  <FullTextSearch>Use</FullTextSearch>
+  <UseInTotals>true</UseInTotals>
+  ```
+
+### Rule 12: Strict Single UTF-8 BOM (`\xef\xbb\xbf`) and Double BOM Prevention
+- 1C platform strictly requires every `.xml` and `.bsl` file to begin with the 3-byte UTF-8 BOM signature (`\xef\xbb\xbf`).
+- ⚠️ **Double BOM trap**: When reading files with Python using `encoding='utf-8'`, the BOM is loaded as character `\ufeff`. Writing that string back with `encoding='utf-8-sig'` prepends a second BOM, resulting in corrupted double BOM (`b'\xef\xbb\xbf\xef\xbb\xbf'`), which breaks XML parsers and 1C Designer!
+- Always read with `encoding='utf-8-sig'` to strip input BOM before saving with `encoding='utf-8-sig'`, or verify raw file headers with `validate_config.py`.
 
 ---
 

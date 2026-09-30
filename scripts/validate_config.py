@@ -19,6 +19,19 @@ def validate_config(proj):
                 except Exception as e:
                     errors.append(f"XML Parse Error in {rel}: {e}")
 
+    # 1.1 Check UTF-8 BOM
+    for root, dirs, files in os.walk(proj):
+        for f in files:
+            if f.endswith(('.xml', '.bsl')):
+                p = os.path.join(root, f)
+                rel = os.path.relpath(p, proj)
+                with open(p, 'rb') as fp:
+                    head = fp.read(4)
+                    if not head.startswith(b'\xef\xbb\xbf'):
+                        errors.append(f"Missing UTF-8 BOM in {rel}")
+                    elif head.startswith(b'\xef\xbb\xbf\xef\xbb\xbf'):
+                        errors.append(f"Double UTF-8 BOM in {rel}")
+
     # 2. Check for illegal tags in objects and attributes
     for root, dirs, files in os.walk(proj):
         for f in files:
@@ -34,8 +47,14 @@ def validate_config(proj):
                 
                 tree = ET.parse(p)
                 
-                # Check Document attributes
+                # Check Document properties and attributes
                 for doc in tree.iter('{http://v8.1c.ru/8.3/MDClasses}Document'):
+                    dprops = doc.find('{http://v8.1c.ru/8.3/MDClasses}Properties')
+                    if dprops is not None:
+                        for child in dprops:
+                            tag = child.tag.split('}')[-1]
+                            if tag == 'Numbered':
+                                errors.append(f"Illegal <Numbered> property in Document: {rel}")
                     doc_child_objs = doc.find('{http://v8.1c.ru/8.3/MDClasses}ChildObjects')
                     if doc_child_objs is not None:
                         for attr in doc_child_objs.findall('{http://v8.1c.ru/8.3/MDClasses}Attribute'):
@@ -83,6 +102,12 @@ def validate_config(proj):
                 rtype = tree.findtext('.//{http://v8.1c.ru/8.3/MDClasses}RegisterType')
                 if rtype not in ['Balance', 'Turnovers']:
                     errors.append(f"AccumulationRegister {f} has invalid RegisterType '{rtype}'")
+                for dim in tree.findall('.//{http://v8.1c.ru/8.3/MDClasses}Dimension/{http://v8.1c.ru/8.3/MDClasses}Properties'):
+                    dname = dim.findtext('{http://v8.1c.ru/8.3/MDClasses}Name')
+                    for child in dim:
+                        tag = child.tag.split('}')[-1]
+                        if tag == 'MainFilter':
+                            errors.append(f"Illegal <MainFilter> property in AccumulationRegister {f} Dimension '{dname}' (MainFilter is only valid in InformationRegisters)")
 
     ireg_dir = os.path.join(proj, 'InformationRegisters')
     independent_iregs = set()
