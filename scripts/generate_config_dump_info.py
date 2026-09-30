@@ -3,7 +3,9 @@ import re
 import hashlib
 import xml.etree.ElementTree as ET
 
-proj = r'C:\Users\enven\OneDrive\Documents\1C_Автосервис_ПРО_Конфигурация'
+import sys
+
+proj = sys.argv[1] if len(sys.argv) > 1 else r'C:\Users\enven\OneDrive\Documents\1C_Автосервис_ПРО_Конфигурация'
 
 def get_hash(name):
     h = hashlib.md5(name.encode('utf-8')).hexdigest()
@@ -12,10 +14,18 @@ def get_hash(name):
 def get_file_uuid(path, tag_name):
     if not os.path.exists(path):
         return None
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, 'r', encoding='utf-8-sig') as f:
         text = f.read()
     m = re.search(rf'<{tag_name}\s+uuid="([^"]+)"', text)
     return m.group(1) if m else None
+
+def get_config_name(path):
+    if not os.path.exists(path):
+        return 'Configuration'
+    with open(path, 'r', encoding='utf-8-sig') as f:
+        text = f.read()
+    m = re.search(r'<Properties>[\s\S]*?<Name>([^<]+)</Name>', text)
+    return m.group(1) if m else 'Configuration'
 
 lines = []
 lines.append('<?xml version="1.0" encoding="UTF-8"?>')
@@ -23,8 +33,10 @@ lines.append('<ConfigDumpInfo xmlns="http://v8.1c.ru/8.3/xcf/dumpinfo" xmlns:xen
 lines.append('\t<ConfigVersions>')
 
 # 1. Configuration
-config_uuid = get_file_uuid(os.path.join(proj, 'Configuration.xml'), 'Configuration')
-lines.append(f'\t\t<Metadata name="Configuration.Автосервис_ПРО_ERP" id="{config_uuid}" configVersion="{get_hash("Configuration.Автосервис_ПРО_ERP")}"/>')
+cfg_file = os.path.join(proj, 'Configuration.xml')
+config_uuid = get_file_uuid(cfg_file, 'Configuration')
+config_name = get_config_name(cfg_file)
+lines.append(f'\t\t<Metadata name="Configuration.{config_name}" id="{config_uuid}" configVersion="{get_hash(f"Configuration.{config_name}")}"/>')
 
 # 2. Subsystems
 subsystems_dir = os.path.join(proj, 'Subsystems')
@@ -212,7 +224,7 @@ lines.append('\t</ConfigVersions>')
 lines.append('</ConfigDumpInfo>')
 
 output_path = os.path.join(proj, 'ConfigDumpInfo.xml')
-with open(output_path, 'w', encoding='utf-8') as f:
+with open(output_path, 'w', encoding='utf-8-sig') as f:
     f.write('\n'.join(lines) + '\n')
 
 print(f'Successfully generated ConfigDumpInfo.xml with {len(lines)} lines!')
