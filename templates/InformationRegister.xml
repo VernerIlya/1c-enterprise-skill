@@ -52,7 +52,6 @@
 			<IncludeHelpInContents>false</IncludeHelpInContents>
 			<DataLockControlMode>Managed</DataLockControlMode>
 			<FullTextSearch>DontUse</FullTextSearch>
-			<EnableTotalsSplitting>true</EnableTotalsSplitting>
 			<ListPresentation/>
 			<ExtendedListPresentation/>
 			<Explanation/>

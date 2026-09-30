@@ -74,7 +74,7 @@ def validate_config(proj):
                 if 'ExtendedPresentation' in c:
                     errors.append(f"Illegal <ExtendedPresentation> in Form metadata: {rel}")
 
-    # 4. Check Accumulation Registers
+    # 4. Check Registers
     areg_dir = os.path.join(proj, 'AccumulationRegisters')
     if os.path.exists(areg_dir):
         for f in os.listdir(areg_dir):
@@ -83,6 +83,36 @@ def validate_config(proj):
                 rtype = tree.findtext('.//{http://v8.1c.ru/8.3/MDClasses}RegisterType')
                 if rtype not in ['Balance', 'Turnovers']:
                     errors.append(f"AccumulationRegister {f} has invalid RegisterType '{rtype}'")
+
+    ireg_dir = os.path.join(proj, 'InformationRegisters')
+    independent_iregs = set()
+    if os.path.exists(ireg_dir):
+        for f in os.listdir(ireg_dir):
+            if f.endswith('.xml'):
+                ireg_name = f[:-4]
+                ipath = os.path.join(ireg_dir, f)
+                with open(ipath, 'r', encoding='utf-8') as fp:
+                    icontent = fp.read()
+                if 'EnableTotalsSplitting' in icontent:
+                    errors.append(f"Illegal <EnableTotalsSplitting> in InformationRegister: {f}")
+                tree = ET.parse(ipath)
+                wmode = tree.findtext('.//{http://v8.1c.ru/8.3/MDClasses}WriteMode')
+                if wmode == 'Independent':
+                    independent_iregs.add(ireg_name)
+
+    # 4b. Check Document RegisterRecords for independent InfoRegs
+    doc_dir = os.path.join(proj, 'Documents')
+    if os.path.exists(doc_dir):
+        for f in os.listdir(doc_dir):
+            if f.endswith('.xml'):
+                dpath = os.path.join(doc_dir, f)
+                tree = ET.parse(dpath)
+                for item in tree.iter('{http://v8.1c.ru/8.3/xcf/readable}Item'):
+                    ref_text = item.text or ''
+                    if ref_text.startswith('InformationRegister.'):
+                        ireg_ref = ref_text.split('.')[-1]
+                        if ireg_ref in independent_iregs:
+                            errors.append(f"Document {f} contains Independent InformationRegister in RegisterRecords: {ref_text}")
 
     # 5. Check NumberQualifiers
     num_qual_count = 0

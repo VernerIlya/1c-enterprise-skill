@@ -178,6 +178,29 @@ Properties allowed in `<Properties>` of an `<Attribute>` depend strictly on its 
   ```
 - ⚠️ **Why**: If `<ConfigDumpInfo>` is written as `<DumpInfo>`, or `format="Hierarchical"` is omitted, or files lack the UTF-8 BOM, 1C Designer fails on load with the dialog: **«Отсутствует контейнер метаданных»** (Missing metadata container).
 
+### Rule 7: InformationRegister vs AccumulationRegister Properties & Document Movements
+1. **`EnableTotalsSplitting` is ONLY for Accumulation Registers**:
+   - `AccumulationRegister` supports splitting totals (`<EnableTotalsSplitting>true</EnableTotalsSplitting>`).
+   - `InformationRegister` does NOT maintain totals. Placing `<EnableTotalsSplitting>` inside an InformationRegister causes:
+     `Неверное свойство объекта метаданных. Свойство EnableTotalsSplitting не входит в состав объекта метаданных InformationRegister`.
+2. **Independent Information Registers cannot be listed in Document `<RegisterRecords>`**:
+   - If an InformationRegister has `<WriteMode>Independent</WriteMode>`, it has no recorder attribute and cannot be attached as a movement recorder.
+   - Listing an Independent InformationRegister in a Document's `<RegisterRecords>` causes:
+     `Документ.<Имя> - в списке Движений обнаружены ссылки на объекты, которые не могут быть подключены`.
+   - **Solution**: Keep `<RegisterRecords/>` empty on the Document, and write records in BSL using `РегистрыСведений.<Имя>.СоздатьНаборЗаписей()`:
+     ```bsl
+     Процедура ОбработкаПроведения(Отказ, РежимПроведения)
+         Для Каждого Стр Из Товары Цикл
+             Набор = РегистрыСведений.ЦеныНоменклатуры.СоздатьНаборЗаписей();
+             Набор.Отбор.Номенклатура.Установить(Стр.Номенклатура);
+             Запись = Набор.Добавить();
+             Запись.Номенклатура = Стр.Номенклатура;
+             Запись.Цена = Стр.Цена;
+             Набор.Записать(Истина);
+         КонецЦикла;
+     КонецПроцедуры
+     ```
+
 ---
 
 ## 4. BSL Programming Standards (`&НаКлиенте` vs `&НаСервере`)
