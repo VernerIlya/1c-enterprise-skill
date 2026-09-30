@@ -145,6 +145,8 @@ def validate_config(proj):
                         in_client = True
                     elif sline.startswith('&НаСервере') or sline.startswith('&НаКлиентеНаСервереБезКонтекста') or sline.startswith('&НаСервереБезКонтекста'):
                         in_client = False
+                    if 'ПоказатьОповещениеПользователю' in line:
+                        errors.append(f"Typo in {rel} (line {idx+1}): use 'ПоказатьОповещениеПользователя' (with 'я')")
                     if in_client:
                         for forbidden in ['ТекущаяДатаСеанса', 'НачалоМесяца', 'КонецДня', 'НачалоДня', 'КонецМесяца']:
                             if forbidden in line:
