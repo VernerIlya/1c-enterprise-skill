@@ -245,6 +245,20 @@ Properties allowed in `<Properties>` of an `<Attribute>` depend strictly on its 
 - ⚠️ **Double BOM trap**: When reading files with Python using `encoding='utf-8'`, the BOM is loaded as character `\ufeff`. Writing that string back with `encoding='utf-8-sig'` prepends a second BOM, resulting in corrupted double BOM (`b'\xef\xbb\xbf\xef\xbb\xbf'`), which breaks XML parsers and 1C Designer!
 - Always read with `encoding='utf-8-sig'` to strip input BOM before saving with `encoding='utf-8-sig'`, or verify raw file headers with `validate_config.py`.
 
+### Rule 13: TabularDocument Multi-Cell Merging (`.Объединить()`)
+- In 1C:Enterprise `ТабличныйДокумент`, setting text on a multi-cell rectangular range:
+  ```bsl
+  ТабДок.Область("R2C2:R2C8").Текст = "Квитанция";
+  ```
+  without calling `.Объединить()` inserts the string into **each individual cell** of that range (C2, C3, C4, C5, C6, C7, C8). In print forms and receipts, this causes duplicated clipped text repeating across every column (`КВИТАН КВИТАН КВИТАН...`).
+- ✅ **Canonical Pattern**:
+  ```bsl
+  Обл = ТабДок.Область("R2C2:R2C8");
+  Обл.Объединить();
+  Обл.Текст = "Квитанция к ПКО № " + Объект.Номер;
+  ```
+- Always set `.ШиринаКолонки` on specific columns (e.g. `ТабДок.Область("C2").ШиринаКолонки = 18;`) and configure `ОтображатьСетку = Ложь; ОтображатьЗаголовки = Ложь;` to ensure clean, publication-ready A4 printing.
+
 ---
 
 ## 4. BSL Programming Standards (`&НаКлиенте` vs `&НаСервере`)
