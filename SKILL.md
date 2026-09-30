@@ -86,7 +86,7 @@ Activate this skill whenever:
 
 ---
 
-## 3. The 6 Critical XML Schema Rules & Prevention
+## 3. The 9 Critical XML Schema & BSL Rules
 
 ### Rule 1: Form Properties by Object Type (`DefaultObjectForm` vs `DefaultForm`)
 - **Document (`<Document>`)**:
@@ -200,6 +200,18 @@ Properties allowed in `<Properties>` of an `<Attribute>` depend strictly on its 
          КонецЦикла;
      КонецПроцедуры
      ```
+
+### Rule 8: Platform Standard Attributes vs Explicit Metadata
+- In 1C:Enterprise, fields like `Комментарий` (Comment), `Ответственный` (Responsible), `Автор` (Author), or `СуммаДокумента` (Total) are **NOT platform standard attributes** of a Document (unlike `Ссылка`, `Дата`, `Номер`, `Проведен`, `ПометкаУдаления`).
+- ⚠️ **Strict Constraint**: If BSL code sets `Док.Ответственный = ...` or `Док.Комментарий = ...`, those attributes **MUST be explicitly created** in the document's `<ChildObjects><Attribute>` metadata! Otherwise, 1C throws runtime exception:
+  `Поле объекта не обнаружено (Ответственный) [ОшибкаВоВремяВыполненияВстроенногоЯзыка]`.
+- Always verify all property assignments in BSL against defined metadata attributes.
+
+### Rule 9: Global UI Notification Methods Exact Spelling
+- `ПоказатьОповещениеПользователя` (ends with **«я»**, NOT «ю»):
+  - ❌ `ПоказатьОповещениеПользователю(...)` fails at compilation: `Процедура или функция с указанным именем не определена`.
+  - ✅ `ПоказатьОповещениеПользователя("Заголовок",, "Текст")` works correctly in Thin Client / Managed Application.
+- For dialog alerts, always use `ПоказатьПредупреждение(Неопределено, Текст)`.
 
 ---
 
