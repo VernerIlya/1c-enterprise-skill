@@ -220,6 +220,26 @@ if os.path.exists(dp_dir):
                         lines.append(f'\t\t<Metadata name="DataProcessor.{dpname}.Form.{fname}" id="{form_uuid}" configVersion="{get_hash(f"DataProcessor.{dpname}.Form.{fname}")}"/>')
                         lines.append(f'\t\t<Metadata name="DataProcessor.{dpname}.Form.{fname}.Form" id="{form_uuid}.0" configVersion="{get_hash(f"DataProcessor.{dpname}.Form.{fname}.Form")}"/>')
 
+# 9. Reports
+rep_dir = os.path.join(proj, 'Reports')
+if os.path.exists(rep_dir):
+    for f in sorted(os.listdir(rep_dir)):
+        if f.endswith('.xml'):
+            rname = f[:-4]
+            rpath = os.path.join(rep_dir, f)
+            ruuid = get_file_uuid(rpath, 'Report')
+            lines.append(f'\t\t<Metadata name="Report.{rname}" id="{ruuid}" configVersion="{get_hash(f"Report.{rname}")}"/>')
+
+# 10. CommonPictures
+cp_dir = os.path.join(proj, 'CommonPictures')
+if os.path.exists(cp_dir):
+    for f in sorted(os.listdir(cp_dir)):
+        if f.endswith('.xml'):
+            cpname = f[:-4]
+            cppath = os.path.join(cp_dir, f)
+            cpuuid = get_file_uuid(cppath, 'CommonPicture')
+            lines.append(f'\t\t<Metadata name="CommonPicture.{cpname}" id="{cpuuid}" configVersion="{get_hash(f"CommonPicture.{cpname}")}"/>')
+
 lines.append('\t</ConfigVersions>')
 lines.append('</ConfigDumpInfo>')
 
