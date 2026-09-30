@@ -1,4 +1,4 @@
----
+﻿---
 name: 1c-enterprise-skill
 description: >-
   Expert engineering skill and authoritative guide for developing, scaffolding, validating,
@@ -86,7 +86,7 @@ Activate this skill whenever:
 
 ---
 
-## 3. The 12 Critical XML Schema & BSL Rules
+## 3. The 15 Critical XML Schema & BSL Rules
 
 ### Rule 1: Form Properties by Object Type (`DefaultObjectForm` vs `DefaultForm`)
 - **Document (`<Document>`)**:
@@ -245,19 +245,74 @@ Properties allowed in `<Properties>` of an `<Attribute>` depend strictly on its 
 - ⚠️ **Double BOM trap**: When reading files with Python using `encoding='utf-8'`, the BOM is loaded as character `\ufeff`. Writing that string back with `encoding='utf-8-sig'` prepends a second BOM, resulting in corrupted double BOM (`b'\xef\xbb\xbf\xef\xbb\xbf'`), which breaks XML parsers and 1C Designer!
 - Always read with `encoding='utf-8-sig'` to strip input BOM before saving with `encoding='utf-8-sig'`, or verify raw file headers with `validate_config.py`.
 
-### Rule 13: TabularDocument Multi-Cell Merging (`.Объединить()`)
-- In 1C:Enterprise `ТабличныйДокумент`, setting text on a multi-cell rectangular range:
+### Rule 13: TabularDocument Multi-Cell Merging & POS Thermal Receipt Design
+- **Multi-Cell Range Repetition Trap**: In 1C `ТабличныйДокумент`, setting text on a multi-cell rectangular range:
   ```bsl
   ТабДок.Область("R2C2:R2C8").Текст = "Квитанция";
   ```
-  without calling `.Объединить()` inserts the string into **each individual cell** of that range (C2, C3, C4, C5, C6, C7, C8). In print forms and receipts, this causes duplicated clipped text repeating across every column (`КВИТАН КВИТАН КВИТАН...`).
-- ✅ **Canonical Pattern**:
+  without calling `.Объединить()` will insert `"Квитанция"` into **each individual cell** of that range (C2, C3, C4, C5, C6, C7, C8). In print forms and receipts, this causes duplicated clipped text repeating across every column (`КВИТАН КВИТАН КВИТАН...`).
+- ✅ **Canonical Merging Pattern**:
   ```bsl
   Обл = ТабДок.Область("R2C2:R2C8");
   Обл.Объединить();
   Обл.Текст = "Квитанция к ПКО № " + Объект.Номер;
   ```
-- Always set `.ШиринаКолонки` on specific columns (e.g. `ТабДок.Область("C2").ШиринаКолонки = 18;`) and configure `ОтображатьСетку = Ложь; ОтображатьЗаголовки = Ложь;` to ensure clean, publication-ready A4 printing.
+- **Single-Cell Table Columns (A4 Blanquettes)**: In tables of items/services, never span data cells across multiple columns inside rows. Make each logical column (№, Товар, Кол-во, Цена, Сумма) exactly one cell (e.g. C2, C3, C4, C5, C6).
+- **POS Thermal Receipt (Кассовый чек / Термолента) Pattern**:
+  Never render a cashier receipt as a wide 9-column spreadsheet! Use a compact 2-column layout (`C1=38`, `C2=14`) with `ОтображатьСетку = Ложь; ОтображатьЗаголовки = Ложь; ТолькоПросмотр = Истина;`. Header and store details merge C1:C2; item lines show name on line 1, and `Кол-во x Цена` on C1 with `= ИтоговаяСумма` right-aligned on C2 on line 2.
+
+### Rule 14: Document Lifecycle, Auto-Filling, & Posting Safety (`ОбработкаЗаполнения` vs `ОбработкаПроведения`)
+- **Auto-Filling on Creation**: Always implement `ОбработкаЗаполнения(ДанныеЗаполнения, СтандартнаяОбработка)` in `ObjectModule.bsl`. When users create new documents (Transfers, Invoices, Orders), attributes like default warehouses (`СкладОтправитель`, `СкладПолучатель`), current date (`ТекущаяДатаСеанса()`), and responsible user (`Ответственный`) must be pre-populated.
+- **Cryptic `[ОшибкаХранимыхДанных]` (StoredDataError) Prevention**:
+  - In 1C, calling `Отказ = Истина;` inside `ОбработкаПроведения` causes the transaction to roll back and outputs the platform error: `Не удалось провести: "<Документ>"! [ОшибкаХранимыхДанных]`.
+  - **Defensive Design Patterns**:
+    1. If a warehouse is omitted, automatically fall back to primary warehouse or pick a valid one from `Справочники.Склады`.
+    2. If `СкладОтправитель = СкладПолучатель`, pick a different recipient warehouse dynamically.
+    3. Filter tabular sections for valid lines (`ЗначениеЗаполнено(Стр.Номенклатура) И Стр.Количество > 0`) rather than crashing on empty lines.
+    4. Provide clear user notifications via `СообщениеПользователю` before aborting.
+
+### Rule 15: Cross-Subsystem Linking & Dynamic Choice Filtering in Managed Forms
+- **Passing Parameters Between Objects**: When opening documents from specialized search forms (e.g. `ПоискПоVIN ➔ РеализацияТоваров`):
+  ```bsl
+  ДанныеДляЗаполнения = Новый Структура;
+  ДанныеДляЗаполнения.Вставить("Номенклатура", ТекСтрока.Номенклатура);
+  ДанныеДляЗаполнения.Вставить("Цена", ТекСтрока.Цена);
+  ДанныеДляЗаполнения.Вставить("VIN", СокрЛП(ВведенныйVIN));
+  ПараметрыФормы = Новый Структура("ЗначенияЗаполнения", ДанныеДляЗаполнения);
+  ОткрытьФорму("Документ.РеализацияТоваров.ФормаОбъекта", ПараметрыФормы);
+  ```
+- **Context Filtering in Choice Lists (`НачалоВыбора` / `StartChoice`)**:
+  To filter a catalog selection by compatibility, parent, or status:
+  ```bsl
+  &НаКлиенте
+  Процедура ТоварыНоменклатураНачалоВыбора(Элемент, ДанныеВыбора, СтандартнаяОбработка)
+      Если ЗначениеЗаполнено(Объект.VIN) Тогда
+          МассивПодходящих = ПолучитьНоменклатуруПоVINНаСервере(Объект.VIN);
+          Если МассивПодходящих.Количество() > 0 Тогда
+              СтандартнаяОбработка = Ложь;
+              ПараметрыВыбора = Новый Структура("Отбор", Новый Структура("Ссылка", Новый ФиксированныйМассив(МассивПодходящих)));
+              ПараметрыВыбора.Вставить("ЗакрыватьПриВыборе", Истина);
+              ОткрытьФорму("Справочник.Номенклатура.ФормаВыбора", ПараметрыВыбора, Элемент);
+          КонецЕсли;
+      КонецЕсли;
+  КонецПроцедуры
+  ```
+- **Fast Autocomplete (`АвтоПодбор` / `AutoComplete`)**:
+  Intercept typing in table cells to suggest only items matching the active filter:
+  ```bsl
+  &НаКлиенте
+  Процедура ТоварыНоменклатураАвтоПодбор(Элемент, Текст, ДанныеВыбора, Ожидание, СтандартнаяОбработка)
+      Если ЗначениеЗаполнено(Объект.VIN) Тогда
+          Список = ПолучитьСписокАвтоподбораПоVINНаСервере(Объект.VIN, Текст);
+          Если Список.Количество() > 0 Тогда
+              СтандартнаяОбработка = Ложь;
+              ДанныеВыбора = Список;
+          КонецЕсли;
+      КонецЕсли;
+  КонецПроцедуры
+  ```
+- **Reactive Workspace Filtering (POS / RMK)**:
+  On field `ПриИзменении` (e.g. `VINАвтоПриИзменении`), immediately re-query the dynamic product catalog on the server with `ВНУТРЕННЕЕ СОЕДИНЕНИЕ` to filter live stock and pricing.
 
 ---
 
