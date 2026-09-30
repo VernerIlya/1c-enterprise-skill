@@ -29,7 +29,7 @@ def validate_config(proj):
                     c = fp.read()
                 
                 # Illegal DefaultForm in Document or Catalog
-                if 'DefaultForm' in c and not ('DataProcessor' in rel):
+                if 'DefaultForm' in c and not ('DataProcessor' in rel) and not ('Report' in rel):
                     errors.append(f"Illegal <DefaultForm> tag in non-DataProcessor file: {rel}")
                 
                 tree = ET.parse(p)
